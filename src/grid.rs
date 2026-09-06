@@ -1,6 +1,6 @@
 mod grid {
     pub struct Rule<T> {
-        kernel: Vec<T>,
+        kernel: Vec<T>, //TODO: Figure out how to do assymetric rules
         result: T,
     }
 
@@ -10,21 +10,19 @@ mod grid {
         world_id: usize,
     }
 
-    //Linear World with Symmetric Rules
-    pub trait LinearSymmetric {
+    //Linear (1-Dimensional) World with Symmetrical Kernel Checking
+    pub trait Dim1SymKernel {
+        //Rules look 'kernel_sz' to each side of the pixel, but not pixel itself
         fn new(row_sz: usize, kernel_sz: usize) -> Self;
 
         //Does square index match a rule?
         fn compare(&self, ind:usize) -> Option<usize>;
 
-        fn step(&self) {
-            //TODO: Needs to borrow the self so it can edit it
-        }
+        fn step(&mut self);
     }
 
     //Wolfram Style
-    impl LinearSymmetric for World<bool> {
-        //Rules look 'kernel_sz' to each side of the pixel
+    impl Dim1SymKernel for World<bool> {
         fn new(row_sz: usize, kernel_sz: usize) -> World<bool> {
             assert!(row_sz != 0);
             assert!(kernel_sz != 0);
@@ -60,7 +58,49 @@ mod grid {
         }
 
         fn compare(&self, ind: usize) -> Option<usize> {
-            return None; //TODO
+            let kernel_sz = self.rules[0].kernel.len() / 2; //all len's should be the same
+
+            for i in 0..self.rules.len() { //check all rules
+                let mut valid_cnt = 0;
+                for j in 0..self.rules[i].kernel.len() { //check kernel
+                    let mut ind_chk: i32;
+
+                    if j < kernel_sz {
+                        ind_chk = (-1 * ((kernel_sz - j) as i32)) + (ind as i32);
+                    } else {
+                        ind_chk = ((j - kernel_sz + 1) as i32) + (ind as i32); //don't check itself
+                    }
+
+
+                    if ind_chk < 0 { ind_chk += self.squares.len() as i32; } //overflow
+                    else if ind_chk >= self.squares.len().try_into().unwrap() { ind_chk -= self.squares.len() as i32 }
+
+                    if self.squares[ind_chk as usize] == self.rules[i].kernel[j] { //this kernel slot matches
+                        valid_cnt += 1;
+                    }
+                }
+
+                if valid_cnt == self.rules[i].kernel.len() {
+                    return Some(i);
+                }
+            }
+
+            return None;
+        }
+
+        fn step(&mut self) {
+            let mut nstate: Vec<bool> = vec![];
+
+            for i in 0..self.squares.len() {
+                match self.compare(i) {
+                    Some(x) => nstate.push(self.rules[x].result),
+                    None => assert!(false), // should be impossible, there should be a rule for all
+                                            // possibilities
+                };
+            }
+
+            assert!(nstate.len() == self.squares.len());
+            self.squares = nstate;
         }
     }
 }
