@@ -1,13 +1,13 @@
-mod grid {
+pub mod grid {
     pub struct Rule<T> {
-        kernel: Vec<T>, //TODO: Figure out how to do assymetric rules
-        result: T,
+        pub kernel: Vec<T>, //TODO: Figure out how to do assymetric rules
+        pub result: T,
     }
 
     pub struct World<T> {
         pub squares: Vec<T>,
-        rules: Vec<Rule<T>>,
-        world_id: usize,
+        pub rules: Vec<Rule<T>>,
+        pub world_id: u128,
     }
 
     //Linear (1-Dimensional) World with Symmetrical Kernel Checking
@@ -18,7 +18,8 @@ mod grid {
         //Does square index match a rule?
         fn compare(&self, ind:usize) -> Option<usize>;
 
-        fn step(&mut self);
+        fn step(&mut self); //TODO: Feels like there should be a way of generalizing this, I just don't
+                            //      know enough Rust to do so yet
     }
 
     //Wolfram Style
@@ -26,6 +27,8 @@ mod grid {
         fn new(row_sz: usize, kernel_sz: usize) -> World<bool> {
             assert!(row_sz != 0);
             assert!(kernel_sz != 0);
+            assert!(kernel_sz < row_sz);
+            assert!(kernel_sz < 3); //hardcoded so it cannot be more than the world_id max
 
             let mut instance = World::<bool>{
                 squares: vec![false; row_sz],
@@ -33,8 +36,9 @@ mod grid {
                 world_id: 0,
             };
 
-            let mut i: usize = 0;
-            while i < (kernel_sz*2).pow(2) {
+            let rule_cnt = (2_u32).pow((kernel_sz * 2) as u32);
+            //println!("{0} -> {1}", kernel_sz, rule_cnt);
+            for i in 0..rule_cnt {
                 let mut law = Rule::<bool>{
                     kernel: vec![false; kernel_sz*2],
                     result: rand::random(),
@@ -47,11 +51,11 @@ mod grid {
                 }
 
                 if law.result {
+                    //println!("{0} + {1}", instance.world_id, 1 << i);
                     instance.world_id += 1 << i;
                 }
 
                 instance.rules.push(law);
-                i += 1;
             }
 
             return instance;
